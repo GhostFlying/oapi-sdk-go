@@ -1,0 +1,30 @@
+name: cache-disposal
+
+on:
+  pull_request:
+    paths:
+      - 'cache/**'
+      - 'ws/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/cache-disposal.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.17.x', 'stable']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      - run: go mod verify
+      - run: go vet ./cache ./ws
+      - run: go test -race -count=1 -timeout=2m ./cache ./ws
