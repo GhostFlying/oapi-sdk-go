@@ -91,6 +91,24 @@ func (c *Client) CloseAndWait(ctx context.Context) error {
 	}
 }
 
+// Dispose permanently prevents Start, stops the active connection, and joins
+// both SDK workers and the cache cleaner. Call it outside lifecycle callbacks.
+// CloseAndWait retains its existing nonterminal behavior for other clients.
+func (c *Client) Dispose(ctx context.Context) error {
+	if ctx == nil {
+		return errNilContext
+	}
+	c.stateMu.Lock()
+	c.terminal = true
+	c.stateMu.Unlock()
+	runErr := c.CloseAndWait(ctx)
+	cacheErr := c.cache.Close(ctx)
+	if cacheErr != nil {
+		return cacheErr
+	}
+	return runErr
+}
+
 func (c *Client) beginRun(callerCtx context.Context) (*clientRun, error) {
 	c.stateMu.Lock()
 	if c.run != nil {
